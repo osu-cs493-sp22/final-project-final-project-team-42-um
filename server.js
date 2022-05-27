@@ -2,7 +2,7 @@ const express = require('express')
 const morgan = require('morgan')
 
 const api = require('./api')
-const { connectToDb } = require('./lib/mongo')
+const { connectToDb } = require('./lib/database')
 
 const app = express()
 const port = process.env.PORT || 8000
