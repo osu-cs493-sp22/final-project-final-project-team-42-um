@@ -1,10 +1,22 @@
 const { Router } = require('express')
 
+const { models } = require('../lib/database')
+
 const router = Router()
 
 // Create a new user
 router.post('/', (req, res, next) => {
-    next()
+    // Still need authentication
+    const user = req.body
+    models.user.create(user).then( newUser => {
+        res.status(201).json({
+            id: newUser._id,
+        })
+    }).catch(err => {
+        res.status(400).json({
+            error: err
+        })
+    })
 })
 
 // Log in a user
