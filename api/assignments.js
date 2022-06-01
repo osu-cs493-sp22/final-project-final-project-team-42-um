@@ -28,7 +28,7 @@ router.get('/:id/submissions', (req, res, next) => {
 })
 
 // Create a new submission for an assignment 
-router.get('/:id/submissions', (req, res, next) => {
+router.post('/:id/submissions', (req, res, next) => {
     next()
 })
 
