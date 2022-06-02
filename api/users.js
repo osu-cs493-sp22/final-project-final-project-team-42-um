@@ -1,6 +1,6 @@
 const { Router } = require('express')
 
-const { models } = require('../lib/database')
+const userModel = require('../models/user')
 
 const router = Router()
 
@@ -8,7 +8,7 @@ const router = Router()
 router.post('/', (req, res, next) => {
     // Still need authentication
     const user = req.body
-    models.user.create(user).then( newUser => {
+    userModel.create(user).then( newUser => {
         res.status(201).json({
             id: newUser._id,
         })
