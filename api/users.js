@@ -1,7 +1,7 @@
 const { Router } = require('express')
 const { optionalAuthentication } = require('../lib/auth')
 
-const { models } = require('../lib/database')
+const userModel = require('../models/user')
 
 const router = Router()
 
@@ -17,7 +17,7 @@ router.post('/', optionalAuthentication, (req, res, next) => {
             })
         }
     }
-    models.user.create(user).then( newUser => {
+    userModel.create(user).then( newUser => {
         res.status(201).json({
             id: newUser._id,
         })
