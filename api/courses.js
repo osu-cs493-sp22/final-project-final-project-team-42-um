@@ -1,10 +1,26 @@
 const { Router } = require('express')
+const { requireAuthentication } = require('../lib/auth')
+
+const { models, errorHandler } = require('../lib/database')
+const { roles } = require('../models/user')
 
 const router = Router()
 
 // Create a new course 
-router.post('/', (req, res, next) => {
-    next()
+router.post('/', requireAuthentication, (req, res, next) => {
+    if (req.role === roles.admin){
+        models.course.create(req.body).then( newCourse => {
+            res.status(201).json({
+                id: newCourse._id
+            })
+        }).catch( err => {
+            res.status(400).send(errorHandler(err))
+        })
+    } else {
+        res.status(403).json({
+            error: "Only an authenticated user can create a course"
+        })
+    }
 })
 
 // Fetch the list of all courses
