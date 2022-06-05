@@ -1,6 +1,6 @@
 const { Router } = require('express')
 
-const { models, errorHandler } = require('../lib/database')
+const { models, errorHandler, gridFsStorage } = require('../lib/database')
 
 const roles = require('../models/user').roles
 
@@ -9,24 +9,10 @@ const mongoose = require('mongoose')
 
 const multer = require('multer')
 const { requireAuthentication } = require('../lib/auth')
-/* This function needs mongoose to have a connection, so it's a 
- * dummy function until the connection is established, after 
- * which it redefines itself with intended purpose. Since 
- * the server starts after the connection is established, the 
- * dummy version should never be executed 
- */
-var uploadSubmission = (req, res, next) => {
-    if (mongoose.connection) {
-        uploadSubmission = multer({ 
-            storage: createBucket({
-                bucketName: "submissions"
-            }) 
-        }).single('file')
-        uploadSubmission(req, res, next)
-    } else {
-        next()
-    }
-}
+
+const uploadSubmission = multer({
+    storage: gridFsStorage({ bucketName: "submission" })
+}).single('file')
 
 const router = Router()
 
