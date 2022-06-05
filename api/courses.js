@@ -40,7 +40,7 @@ router.get('/', async (req, res, next) => {
     filter.term = term
   }
 
-  const numCourses = await models.course.countDocuments()
+  const numCourses = await models.course.countDocuments(filter)
   const numPerPage = 10
   const lastPage = Math.ceil(numCourses / numPerPage)
   page = page > lastPage ? lastPage : page
