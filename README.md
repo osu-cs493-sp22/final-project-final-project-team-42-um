@@ -5,13 +5,13 @@ which can be viewed in a presentable format at https://editor.swagger.io.
 
 ## TASKS
  - ~~Authentication~~
- - Course routes
+ - Course routes  
     Post implemented, untested
- - Assignment routes
+ - Assignment routes  
     Post implemented, mostly untested
- - Submission routes
+ - Submission routes  
     Gridfs hook implemented
- - Users routes
+ - Users routes  
     Login works, needs edgecase testing
     Create new user finished
  - Review Models
