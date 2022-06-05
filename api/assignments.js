@@ -19,7 +19,7 @@ const router = Router()
 // Create a new assignment
 router.post('/', requireAuthentication, (req, res, next) => {
     const assignment = req.body 
-    console.log(req.body)
+    console.log(assignment)
     if (assignment.courseId){
         const course = models.course.findById(assignment.courseId)
         if (course) {
