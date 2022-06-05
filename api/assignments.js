@@ -17,12 +17,12 @@ const uploadSubmission = multer({
 const router = Router()
 
 // Create a new assignment
-router.post('/', requireAuthentication, (req, res, next) => {
+router.post('/', requireAuthentication, async (req, res, next) => {
     const assignment = req.body 
-    console.log(assignment)
     if (assignment.courseId){
-        const course = models.course.findById(assignment.courseId)
+        const course = await models.course.findById(assignment.courseId)
         if (course) {
+            console.log(course)
             if (course.instructorId == req.user || req.role === roles.admin) {
                 models.assignment.create(assignment).then( newAss => {
                     res.status(201).json({

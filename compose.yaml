@@ -7,7 +7,7 @@ services:
       MONGO_PASSWORD: ${MONGO_PASSWORD}
       MONGO_DB_NAME: ${MONGO_DB_NAME}
       MONGO_AUTH_DB_NAME: ${MONGO_DB_NAME}
-      PORT: 8069
+      PORT: 8000
     ports:
       - "8000:8000"
     restart: on-failure

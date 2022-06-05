@@ -42,6 +42,11 @@ connectToDb(async function () {
         const db = getDbReference()
         let result = await db.collection('users').insertMany(userData)
         console.log("== Initial user data added:", result)
+        const instructorId = result.insertedIds['1']
+        courseData.forEach((element, index) => {
+          element.instructorId = instructorId
+          courseData[index] = element
+        })
         result = await db.collection('courses').insertMany(courseData)
         console.log("== Initial course data added:", result)
 
