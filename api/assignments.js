@@ -20,7 +20,7 @@ const router = Router()
 router.post('/', requireAuthentication, async (req, res, next) => {
     const assignment = req.body 
     if (assignment.courseId){
-        // Check authentication status
+        // Check authorization status
         const course = await models.course.findById(assignment.courseId)
         if (course) {
             if (course.instructorId == req.user || req.role === roles.admin) {
@@ -62,53 +62,113 @@ router.get('/:id', (req, res, next) => {
 })
 
 // Update data for a specific assignment
-router.patch('/:id', requireAuthentication, (req, res, next) => {
-    models.assignment.findById(req.params.id).then( assignment => {
+router.patch('/:id', requireAuthentication, async (req, res, next) => {
+    try{
+        let assignment = await models.assignment.findById(req.params.id)
         if (assignment) {
             // Update assignment fields
             Object.keys(req.body).every(
                 key => assignment[key] = req.body[key]
             )
-            // Check authenication status
-            models.course.findById(assignment.courseId).then( course => {
-                if (course) {
-                    if (req.role === roles.admin || req.user == course.instructorId){
-                        // Finally update assignment
-                        assignment.save().then( () => {
-                            res.status(200).send()
-                        }).catch( 
-                            err => res.status(400).send( errorHandler(err) ) 
-                        )
-                    } else {
-                        res.status(403).json({
-                            error: "Only an authorized user can modify an assignment"
-                        })
-                    }
+            // Check authorization status
+            const course = await models.course.findById(assignment.courseId)
+            if (course) {
+                if (req.role === roles.admin || req.user == course.instructorId){
+                    // Finally update assignment
+                    await assignment.save()
+                    res.status(200).send()
                 } else {
-                    res.status(400).json({
-                        error: "Assignment courseId doesn't exist"
+                    res.status(403).json({
+                        error: "Only an authorized user can modify an assignment"
                     })
                 }
-            }).catch( 
-                err => res.status(400).send( errorHandler(err) )
-            )
+            } else {
+                res.status(400).json({
+                    error: "Assignment courseId doesn't exist"
+                })
+            }
         } else {
             next()
         }
-    }).catch( 
-        err => res.status(400).send(errorHandler(err))
-    )
+    } catch(err) {
+        res.status(400).send(errorHandler(err))
+    }
 })
 
 // Remove a specific assignment from the database
-router.delete('/:id', (req, res, next) => {
-    next()
+router.delete('/:id', requireAuthentication, async (req, res, next) => {
+    try{
+        const assignment = await models.assignment.findById(req.params.id)
+        if (assignment) {
+            // Check authorization status
+            const course = await models.course.findById(assignment.courseId)
+            if (req.role === roles.admin || (course && course.instructorId == req.user)){
+                // Delete the assignment
+                await models.assignment.findByIdAndDelete(req.params.id)
+                res.status(204).send()
+            } else {
+                res.status(403).json({
+                    error: "Only an authorized user can delete an assignment"
+                })
+            }
+        } else {
+            next()
+        }
+    } catch(err){
+        res.status(400).send( errorHandler(err) )
+    }
 })
 
 // Fetch the list of all submissions for an assignment
-router.get('/:id/submissions', (req, res, next) => {
-    next()
+router.get('/:id/submissions', async (req, res, next) => {
+    try{
+        const assignment = await models.assignment.findById(req.params.id)
+        if (assignment) {
+            // Check authorization status
+            const course = await models.course.findById(assignment.courseId)
+            if (req.role === roles.admin || (course && course.instructorId == req.user)){
+                // Paginate responses
+                let page = parseInt(req.query.page) || 1
+                const filter = { studentId: req.query.studentId }
+                const numSubmissions = await models.submission.countDocuments(filter)
+                const numPerPage = 10
+                const lastPage = Math.ceil(numCourses / numPerPage)
+                page = page > lastPage ? lastPage : page
+                page = page < 1 ? 1 : page
+
+                const start = (page - 1) * numPerPage
+
+                const foundSubmissions = await models.submission.find(filter).skip(start).limit(numPerPage)
+                res.status(200).json({
+                    submissions: foundSubmissions
+                })
+            } else {
+                res.status(403).json({
+                    error: "Only an authorized user can delete an assignment"
+                })
+            }
+        } else {
+            next()
+        }
+    } catch(err){
+        res.status(400).send( errorHandler(err) )
+    }
 })
+
+// Middleware to check authorization status before committing to upload
+async function submissionAuthorization (req, res, next) {
+    try{
+        const assignment = await models.assignment.findById(req.params.id)
+        if (assignment) {
+            // Check if student is enrolled in course
+            const course = await models.course.findById(assignment.courseId)
+        } else {
+            next()
+        }
+    } catch(err) {
+        res.status(400).send( errorHandler(err) )
+    }
+}
 
 // Create a new submission for an assignment 
 router.post('/:id/submissions', 

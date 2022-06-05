@@ -36,7 +36,6 @@ router.post('/', optionalAuthentication, (req, res, next) => {
 // Log in a user
 router.post('/login', async (req, res, next) => {
   const user = req.body
-  console.log(user)
   if (user && user.email && user.password){
     try {
       if (await authenticateUser(user.email, user.password)){
