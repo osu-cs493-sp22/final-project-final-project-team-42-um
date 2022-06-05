@@ -6,7 +6,9 @@ which can be viewed in a presentable format at https://editor.swagger.io.
 ## TASKS
  - ~~Authentication~~
  - Course routes  
-    Post implemented, untested
+    ~~Post implemented, untested~~
+    Students need to be implemented
+    need to fix pagination when filters are in place
  - Assignment routes  
     Post implemented, mostly untested
  - Submission routes  
