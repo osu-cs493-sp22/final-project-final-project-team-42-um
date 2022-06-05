@@ -18,28 +18,39 @@
 
 const { connectToDb, getDbReference, closeDbConnection } = require('./lib/database')
 
+const courseData = require('./data/courses.json')
+const userData = require('./data/users.json')
+
 const mongoCreateUser = process.env.MONGO_CREATE_USER
 const mongoCreatePassword = process.env.MONGO_CREATE_PASSWORD
 
 connectToDb(async function () {
-  try {
-    /*
-    * Create a new, lower-privileged database user if the correct environment
-    * variables were specified.
-    */
-    if (mongoCreateUser && mongoCreatePassword) {
-      const db = getDbReference()
-      const result = await db.addUser(mongoCreateUser, mongoCreatePassword, {
-        roles: "readWrite"
-      })
-      console.log("== New user created:", result)
-    }
+    try {
+        /*
+         * Create a new, lower-privileged database user if the correct environment
+         * variables were specified.
+         */
+        if (mongoCreateUser && mongoCreatePassword) {
+            const db = getDbReference()
+            const result = await db.addUser(mongoCreateUser, mongoCreatePassword, {
+                roles: "readWrite"
+            })
+            console.log("== New user created:", result)
+        }
 
-    closeDbConnection(function () {
-      console.log("== DB connection closed")
-  })
-  } catch (err) {
-    /* Catch error so docker compose doesn't loop forever */
-    console.log(err)
-  }
+        /* add initial data to the database */
+        const db = getDbReference()
+        let result = await db.collection('users').insertMany(userData)
+        console.log("== Initial user data added:", result)
+        result = await db.collection('courses').insertMany(courseData)
+        console.log("== Initial course data added:", result)
+
+
+        closeDbConnection(function () {
+            console.log("== DB connection closed")
+        })
+    } catch (err) {
+        /* Catch error so docker compose doesn't loop forever */
+        console.log(err)
+    }
 })
