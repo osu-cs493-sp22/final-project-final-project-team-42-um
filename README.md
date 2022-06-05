@@ -7,8 +7,8 @@ which can be viewed in a presentable format at https://editor.swagger.io.
  - ~~Authentication~~
  - Course routes  
     ~~Post implemented, untested~~
-    Students need to be implemented
-    need to fix pagination when filters are in place
+    Students need to be implemented  
+    need to fix pagination when filters are in place  
  - Assignment routes  
     Post implemented, mostly untested
  - Submission routes  
