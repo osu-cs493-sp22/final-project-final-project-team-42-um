@@ -2,3 +2,16 @@
 This project will implement a RESTful api for Tarpaulin, a limited feature 
 ripoff of Canvas.  All of the endpoints are described in public/openapi.yml 
 which can be viewed in a presentable format at https://editor.swagger.io. 
+
+## TASKS
+ - ~~Authentication~~
+ - Course routes
+    Post implemented, untested
+ - Assignment routes
+    Post implemented, mostly untested
+ - Submission routes
+    Gridfs hook implemented
+ - Users routes
+    Login works, needs edgecase testing
+    Create new user finished
+ - Review Models
