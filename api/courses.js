@@ -7,19 +7,17 @@ const { roles } = require('../models/user')
 const router = Router()
 
 // Create a new course 
-router.post('/', requireAuthentication, (req, res, next) => {
+router.post('/', requireAuthentication, async (req, res, next) => {
   if (req.role === roles.admin){
-    models.course.create(req.body).then( newCourse => {
-      res.status(201).json({
-        id: newCourse._id
-      })
-    }).catch( err => {
-      res.status(400).send(errorHandler(err))
-    })
+    try {
+      const course = await models.course.create(req.body)
+      res.status(201).json({"id": course.id})
+    } catch (err) {
+      console.log(err)
+      res.status(400).json({ error: "Invalid Course Data" })
+    }
   } else {
-    res.status(403).json({
-      error: "Only an authenticated user can create a course"
-    })
+    res.status(403).json({ error: "You are not authorized to create a course" })
   }
 })
 
@@ -84,31 +82,59 @@ router.get('/:id', async (req, res, next) => {
 })
 
 // Update data for a specific course
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', requireAuthentication, async (req, res, next) => {
   try {
-    const course = await models.course.findByIdAndUpdate(req.params.id, req.body)
-    if (course) {
-      res.status(200).end()
-    }
-    else {
-      next()
+    if (req.role === roles.admin || req.role === roles.instructor){
+      if (req.role === roles.instructor){
+        const course = await models.course.findById(req.params.id)
+        console.log(course)
+        if (!course)
+        {
+          next()
+          return
+        }
+        console.log(course.instructorId)
+        if (course.instructorId.toString() !== req.user){
+          res.status(403).json(
+            {"error": "You are not authorized to update this course"}
+          )
+          return
+        }
+      }
+
+      const course = await models.course.findByIdAndUpdate(req.params.id, req.body)
+      if (course) {
+        res.status(200).end()
+      }
+      else {
+        next()
+      }
+    } else {
+      res.status(403).json({"error":"You are not authorized to update this course"})
     }
   }
   catch (err){
     console.log(err.message)
-    res.status(400).send({"Error":"Invalid Course Data"})
+    res.status(400).send({"error":"Invalid Course Data"})
   }
 })
 
 // Remove a specific course from the database
-router.delete('/:id', async (req, res, next) => {
-  try {
-    const course = await models.course.findByIdAndDelete(req.params.id)
-    await course.remove()
-    res.status(204).end()
+router.delete('/:id', requireAuthentication, async (req, res, next) => {
+  if (req.role === roles.admin){
+    try {
+      const course = await models.course.findByIdAndDelete(req.params.id)
+      await course.remove()
+      res.status(204).end()
+    }
+    catch (err){
+      next()
+    }
   }
-  catch (err){
-    next()
+  else {
+    res.status(403).json(
+      {"error":"You are not authorized to delete this course"}
+    )
   }
 })
 
