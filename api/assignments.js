@@ -144,7 +144,7 @@ router.get('/:id/submissions', async (req, res, next) => {
                 })
             } else {
                 res.status(403).json({
-                    error: "Only an authorized user can delete an assignment"
+                    error: "Only an authorized user can view submissions"
                 })
             }
         } else {
@@ -161,9 +161,19 @@ async function submissionAuthorization (req, res, next) {
         const assignment = await models.assignment.findById(req.params.id)
         if (assignment) {
             // Check if student is enrolled in course
-            const course = await models.course.findById(assignment.courseId)
+            const roster = await models.roster.findById(assignment.courseId)
+            if (roster && req.user in roster.students) {
+                // Call the upload middleware
+                next()
+            } else {
+                res.status(403).json({
+                    error: "Only a student enrolled in this class can submit an assignment"
+                })
+            }
         } else {
-            next()
+            res.status(404).json({
+                error: "Requested resource " + req.originalUrl + " does not exist"
+              })
         }
     } catch(err) {
         res.status(400).send( errorHandler(err) )
@@ -173,9 +183,9 @@ async function submissionAuthorization (req, res, next) {
 // Create a new submission for an assignment 
 router.post('/:id/submissions', 
     requireAuthentication, 
-    uploadSubmission, 
+    submissionAuthorization, 
+    uploadSubmission,
     (req, res, next) => {
-        // TODO All of the verification and stuff.
         if (req.file && req.body){
             res.status(201).json({
                 id: req.file._id

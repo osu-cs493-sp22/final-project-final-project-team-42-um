@@ -3,11 +3,11 @@ const mongoose = require('mongoose')
 
 exports.schema = mongoose.Schema({
     students: [{ type: ObjectId, required: true, validate: {
-        validator: async function(instructorId) {
-            const user = await mongoose.model('user').findById(instructorId)
+        validator: async function(studentId) {
+            const user = await mongoose.model('user').findById(studentId)
             return user && user.role === "student"
         },
-        message: "Course instructorId is not in fact an instructor"
+        message: "Roster studentId is not in fact an student"
     }}]
 })
 
