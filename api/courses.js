@@ -161,8 +161,8 @@ router.get('/:id/students', requireAuthentication, async (req, res, next) => {
           return
         }
       }
-    const roster = await models.roster.findById(req.params.id)
-    res.status(200).json({students: roster.students})
+      const roster = await models.roster.findById(req.params.id)
+      res.status(200).json({students: roster.students})
     }
     else {
       res.status(403).json(
@@ -222,8 +222,42 @@ router.post('/:id/students', requireAuthentication, async (req, res, next) => {
 })
 
 // Fetch a CSV file containing a list of the students enrolled in the course
-router.get('/:id/roster', (req, res, next) => {
-  next()
+router.get('/:id/roster', requireAuthentication, async (req, res, next) => {
+  try {
+    if (req.role === roles.admin || req.role === roles.instructor){
+      const course = await models.course.findById(req.params.id)
+      if (!course) {
+        next()
+        return
+      }
+      if (req.role === roles.instructor){
+        if (course.instructorId.toString() !== req.user){
+          res.status(403).json(
+            {"error": "You are not authorized to view this course"}
+          )
+          return
+        }
+      }
+      const roster = await models.roster.findById(req.params.id)
+      let csv = "Name,ID,Email\n"
+      for (let i = 0; i < roster.students.length; i++){
+        const student = await models.user.findById(roster.students[i])
+        csv += student.name + "," + student.id + "," + student.email + "\n"
+      }
+      res.setHeader('Content-Type', 'text/csv')
+      res.setHeader('Content-Disposition', 'attachment; filename=roster.csv')
+      res.status(200).send(csv)
+    }
+    else {
+      res.status(403).json(
+        {"error":"You are not authorized to view this information"}
+      )
+    }
+  }
+  catch (err){
+    console.log(err.message)
+    next()
+  }
 })
 
 // Fetch a list of the assignments for the course
