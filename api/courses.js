@@ -11,6 +11,8 @@ router.post('/', requireAuthentication, async (req, res, next) => {
   if (req.role === roles.admin){
     try {
       const course = await models.course.create(req.body)
+      const rosterbody = {_id: course._id, students: []}
+      const roster = await models.roster.create(rosterbody)
       res.status(201).json({"id": course.id})
     } catch (err) {
       console.log(err)
@@ -40,7 +42,7 @@ router.get('/', async (req, res, next) => {
     filter.term = term
   }
 
-  const numCourses = await models.course.countDocuments()
+  const numCourses = await models.course.countDocuments(filter)
   const numPerPage = 10
   const lastPage = Math.ceil(numCourses / numPerPage)
   page = page > lastPage ? lastPage : page
@@ -72,11 +74,15 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const courses = await models.course.findById(req.params.id);
-    res.status(200).json({
-      course: courses
-    })
+    if (courses) {
+      res.status(200).json({
+        course: courses
+      })
+    } else {
+      next()
+    }
   }
-  catch {
+  catch (err) {
     next()
   }
 })
@@ -139,8 +145,34 @@ router.delete('/:id', requireAuthentication, async (req, res, next) => {
 })
 
 // Fetch a list of students enrolled in the class
-router.get('/:id/students', (req, res, next) => {
-  next()
+router.get('/:id/students', requireAuthentication, async (req, res, next) => {
+  try {
+    if (req.role === roles.admin || req.role === roles.instructor){
+      const course = await models.course.findById(req.params.id)
+      if (!course) {
+        next()
+        return
+      }
+      if (req.role === roles.instructor){
+        if (course.instructorId.toString() !== req.user){
+          res.status(403).json(
+            {"error": "You are not authorized to view this course"}
+          )
+          return
+        }
+      }
+    const roster = await models.roster.findById(req.params.id)
+    res.status(200).json({students: roster.students})
+    }
+    else {
+      res.status(403).json(
+        {"error":"You are not authorized to view this information"}
+      )
+    }
+  }
+  catch (err){
+    next()
+  }
 })
 
 // Update enrollment for a course
@@ -154,8 +186,7 @@ router.get('/:id/roster', (req, res, next) => {
 })
 
 // Fetch a list of the assignments for the course
-router.get('/:id/assignments', (req, res, next) => {
-  next()
+router.get('/:id/assignments', async (req, res, next) => {
 })
 
 module.exports = router
