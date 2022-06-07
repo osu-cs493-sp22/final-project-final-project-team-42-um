@@ -9,10 +9,8 @@ which can be viewed in a presentable format at https://editor.swagger.io.
     ~~Post implemented, untested~~
     Students need to be implemented  
     need to fix pagination when filters are in place  
- - Assignment routes  
-    Post implemented, mostly untested
- - Submission routes  
-    Gridfs hook implemented
+ - ~~Assignment routes ~~
+ - ~~Submission routes ~~
  - Users routes  
     Login works, needs edgecase testing
     Create new user finished
