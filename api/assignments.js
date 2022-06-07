@@ -1,6 +1,11 @@
 const { Router } = require('express')
 
-const { models, errorHandler, gridFsStorage } = require('../lib/database')
+const { 
+    models, 
+    errorHandler, 
+    uploadSubmission, 
+    getSubmissionBucket 
+} = require('../lib/database')
 
 const roles = require('../models/user').roles
 
@@ -9,10 +14,6 @@ const mongoose = require('mongoose')
 
 const multer = require('multer')
 const { requireAuthentication } = require('../lib/auth')
-
-const uploadSubmission = multer({
-    storage: gridFsStorage({ bucketName: "submission" })
-}).single('file')
 
 const router = Router()
 
@@ -52,6 +53,9 @@ router.post('/', requireAuthentication, async (req, res, next) => {
 
 // Fetch data about a specific assignment
 router.get('/:id', (req, res, next) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)){
+        next()
+    }
     models.assignment.findById(req.params.id).then( (assignment) => {
         if (assignment) {
             res.status(200).send(assignment)
@@ -63,6 +67,9 @@ router.get('/:id', (req, res, next) => {
 
 // Update data for a specific assignment
 router.patch('/:id', requireAuthentication, async (req, res, next) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)){
+        next()
+    }
     try{
         let assignment = await models.assignment.findById(req.params.id)
         if (assignment) {
@@ -97,6 +104,9 @@ router.patch('/:id', requireAuthentication, async (req, res, next) => {
 
 // Remove a specific assignment from the database
 router.delete('/:id', requireAuthentication, async (req, res, next) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)){
+        next()
+    }
     try{
         const assignment = await models.assignment.findById(req.params.id)
         if (assignment) {
@@ -120,7 +130,10 @@ router.delete('/:id', requireAuthentication, async (req, res, next) => {
 })
 
 // Fetch the list of all submissions for an assignment
-router.get('/:id/submissions', async (req, res, next) => {
+router.get('/:id/submissions', requireAuthentication, async (req, res, next) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)){
+        next()
+    }
     try{
         const assignment = await models.assignment.findById(req.params.id)
         if (assignment) {
@@ -129,10 +142,13 @@ router.get('/:id/submissions', async (req, res, next) => {
             if (req.role === roles.admin || (course && course.instructorId == req.user)){
                 // Paginate responses
                 let page = parseInt(req.query.page) || 1
-                const filter = { studentId: req.query.studentId }
+                let filter = { assignmentId: req.params.id }
+                if (req.query.studentId){
+                    filter.studentId = req.query.studentId
+                }
                 const numSubmissions = await models.submission.countDocuments(filter)
                 const numPerPage = 10
-                const lastPage = Math.ceil(numCourses / numPerPage)
+                const lastPage = Math.ceil(numSubmissions / numPerPage)
                 page = page > lastPage ? lastPage : page
                 page = page < 1 ? 1 : page
 
@@ -157,12 +173,17 @@ router.get('/:id/submissions', async (req, res, next) => {
 
 // Middleware to check authorization status before committing to upload
 async function submissionAuthorization (req, res, next) {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)){
+        res.status(404).json({
+            error: "Requested resource " + req.originalUrl + " does not exist"
+            })
+    }
     try{
         const assignment = await models.assignment.findById(req.params.id)
         if (assignment) {
             // Check if student is enrolled in course
             const roster = await models.roster.findById(assignment.courseId)
-            if (roster && req.user in roster.students) {
+            if (roster && roster.students.includes(req.user)) {
                 // Call the upload middleware
                 next()
             } else {
@@ -184,12 +205,52 @@ async function submissionAuthorization (req, res, next) {
 router.post('/:id/submissions', 
     requireAuthentication, 
     submissionAuthorization, 
-    uploadSubmission,
-    (req, res, next) => {
+    uploadSubmission.single('file'),
+    async (req, res, next) => {
         if (req.file && req.body){
-            res.status(201).json({
-                id: req.file._id
-            })
+            if (req.body.assignmentId == req.params.id){
+                if (req.body.studentId == req.user){
+                    let submission = await models.submission.findById(req.file._id) 
+                    // This overrides the strict: false for this documet only
+                    // allowing this document to undergo validation but keeping
+                    // GridFS data
+                    submission = new models.submission(submission, true)
+                    submission.set(req.body)
+                    submission.grade = null
+                    try{
+                        await submission.save()
+                        res.status(201).json({
+                            id: req.file._id
+                        })
+                    } catch(err) {
+                        const bucket = await createBucket({bucketName: "submission"})
+                        bucket.deleteFile(req.file._id, (error, results) => {
+                            if (error){
+                                console.log(error)
+                            }
+                            res.status(400).send( errorHandler(err) )
+                        })
+                    }
+                } else {
+                    const bucket = await getSubmissionBucket()
+                        bucket.deleteFile(req.file._id, (error, results) => {
+                            if (error){
+                                console.log(error)
+                            }
+                            res.status(400).json({
+                                error: "Students may only submit their own assignment"
+                            })
+                        })
+                }
+            } else {
+                const bucket = await getSubmissionBucket()
+                await bucket.unlink({_id: req.file._id})
+                res.status(400).json({
+                    error: `assignmentId in submission doesn't match assignmentId in url:\
+                    submission: ${req.body.assignmentId}\
+                    url: ${req.params.assignmentId}`
+                })
+            }
         } else {
             res.status(400).send({
                 error: "Request expects a multipart form with a file field"

@@ -43,6 +43,7 @@ connectToDb(async function () {
         let result = await db.collection('users').insertMany(userData)
         console.log("== Initial user data added:", result)
         const instructorId = result.insertedIds['1']
+        const studentId = result.insertedIds['2']
         courseData.forEach((element, index) => {
           element.instructorId = instructorId
           courseData[index] = element
@@ -50,6 +51,16 @@ connectToDb(async function () {
         result = await db.collection('courses').insertMany(courseData)
         console.log("== Initial course data added:", result)
 
+        let rosters = []
+        for (i=0; i<result.insertedCount; i++){
+          rosters.push({
+            _id: result.insertedIds[i],
+            students: [studentId]
+          })
+        }
+
+        console.log("== Rosters to be added: ", rosters)
+        await db.collection('rosters').insertMany(rosters)
 
         closeDbConnection(function () {
             console.log("== DB connection closed")
