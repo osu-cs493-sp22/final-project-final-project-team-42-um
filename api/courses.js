@@ -161,8 +161,8 @@ router.get('/:id/students', requireAuthentication, async (req, res, next) => {
           return
         }
       }
-    const roster = await models.roster.findById(req.params.id)
-    res.status(200).json({students: roster.students})
+      const roster = await models.roster.findById(req.params.id)
+      res.status(200).json({students: roster.students})
     }
     else {
       res.status(403).json(
@@ -171,22 +171,111 @@ router.get('/:id/students', requireAuthentication, async (req, res, next) => {
     }
   }
   catch (err){
+    console.log(err)
     next()
   }
 })
 
 // Update enrollment for a course
-router.patch('/:id/students', (req, res, next) => {
-  next()
+router.post('/:id/students', requireAuthentication, async (req, res, next) => {
+  try {
+    if (req.role === roles.admin || req.role === roles.instructor){
+      const course = await models.course.findById(req.params.id)
+      if (!course) {
+        console.log("course not found")
+        next()
+        return
+      }
+      if (req.role === roles.instructor){
+        if (course.instructorId.toString() !== req.user){
+          res.status(403).json(
+            {"error": "You are not authorized to update this course"}
+          )
+          return
+        }
+      }
+      const roster = await models.roster.findById(req.params.id)
+      const toAdd = req.body.add || []
+      const toRemove = req.body.remove || []
+
+      for (let i = 0; i < toRemove.length; i++){
+        const index = roster.students.indexOf(toRemove[i])
+        if (index > -1){
+          roster.students.splice(index, 1)
+        }
+      }
+      for (let i = 0; i < toAdd.length; i++){
+        roster.students.push(toAdd[i])
+      }
+      await roster.save()
+      res.status(200).end()
+    }
+    else {
+      res.status(403).json(
+        {"error":"You are not authorized to update this course"}
+      )
+    }
+  }
+  catch (err){
+    console.log(err.message)
+    next()
+  }
 })
 
 // Fetch a CSV file containing a list of the students enrolled in the course
-router.get('/:id/roster', (req, res, next) => {
-  next()
+router.get('/:id/roster', requireAuthentication, async (req, res, next) => {
+  try {
+    if (req.role === roles.admin || req.role === roles.instructor){
+      const course = await models.course.findById(req.params.id)
+      if (!course) {
+        next()
+        return
+      }
+      if (req.role === roles.instructor){
+        if (course.instructorId.toString() !== req.user){
+          res.status(403).json(
+            {"error": "You are not authorized to view this course"}
+          )
+          return
+        }
+      }
+      const roster = await models.roster.findById(req.params.id)
+      let csv = "Name,ID,Email\n"
+      for (let i = 0; i < roster.students.length; i++){
+        const student = await models.user.findById(roster.students[i])
+        csv += student.name + "," + student.id + "," + student.email + "\n"
+      }
+      res.setHeader('Content-Type', 'text/csv')
+      res.setHeader('Content-Disposition', 'attachment; filename=roster.csv')
+      res.status(200).send(csv)
+    }
+    else {
+      res.status(403).json(
+        {"error":"You are not authorized to view this information"}
+      )
+    }
+  }
+  catch (err){
+    console.log(err.message)
+    next()
+  }
 })
 
 // Fetch a list of the assignments for the course
 router.get('/:id/assignments', async (req, res, next) => {
+  try {
+    const assignments = await models.assignment.find({courseId: req.params.id})
+    let ids = []
+    for (let i = 0; i < assignments.length; i++) {
+      ids.push(assignments[i]._id)
+    }
+    res.status(200).json({
+      assignments: ids
+    })
+  }
+  catch (err){
+    next()
+  }
 })
 
 module.exports = router

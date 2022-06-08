@@ -1,8 +1,14 @@
 const { Router } = require('express')
-const { optionalAuthentication, authenticateUser, genAuthToken } = require('../lib/auth')
+const { optionalAuthentication,
+  requireAuthentication,
+  authenticateUser,
+  genAuthToken
+} = require('../lib/auth')
 
 const { models, errorHandler } = require('../lib/database')
 const { roles } = require('../models/user')
+
+const bcrypt = require('bcryptjs')
 
 const router = Router()
 
@@ -59,8 +65,45 @@ router.post('/login', async (req, res, next) => {
 })
 
 // Fetch data about a specific user
-router.get('/:id', (req, res, next) => {
-  next()
+router.get('/:id', requireAuthentication, async (req, res, next) => {
+  try {
+    const user = await models.user.findById(req.params.id)
+    console.log("== ids: ", user._id.toString()," ", req.user)
+    if (user){
+      if (user._id.toString() === req.user || req.role === roles.admin){
+        let response = {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          courses: []
+        }
+        if (user.role === roles.instructor){
+          const courses = await models.course.find({ instructor: user._id })
+          response.courses = courses.map(course => course._id)
+        }
+        else if (user.role === roles.student){
+          const courses = await models.roster.find()
+          response.courses = courses.filter(course => 
+            course.students.includes(user._id))
+              .map(course => course._id)
+        }
+        res.status(200).json(response)
+      } 
+      else {
+        res.status(403).json({
+          error: "Forbidden: You are not authorized to view this user"
+        })
+      }
+    }
+    else {
+      next()
+    }
+  }
+  catch (err) {
+    console.log(err.message)
+    next()
+  }
 })
 
 module.exports = router

@@ -3,6 +3,9 @@ const morgan = require('morgan')
 
 const api = require('./api')
 const { connectToDb } = require('./lib/database')
+const { redisClient, rateLimit } = require('./lib/redis')
+
+const { optionalAuthentication } = require('./lib/auth')
 
 const app = express()
 const port = process.env.PORT || 8000
@@ -14,6 +17,10 @@ app.use(morgan('dev'))
 
 app.use(express.json())
 app.use(express.static('public'))
+
+app.use(optionalAuthentication)
+
+app.use(rateLimit)
 
 /*
  * All routes for the API are written in modules in the api/ directory.  The
@@ -36,8 +43,14 @@ app.use("*", function (req, res, next, err){
   })
 })
 
-connectToDb(function () {
-  app.listen(port, function () {
-    console.log("== Server is running on port", port)
-  })
+connectToDb(async function () {
+  try {
+    await redisClient.connect()
+    app.listen(port, function () {
+      console.log("== Server is running on port", port)
+    })
+  }
+  catch (err) {
+    console.error(err)
+  }
 })
