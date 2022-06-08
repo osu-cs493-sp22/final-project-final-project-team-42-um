@@ -818,7 +818,7 @@ components:
         number:
           type: string
           description: Course number.
-          example: 493
+          example: '493'
         title:
           type: string
           description: Course title.
